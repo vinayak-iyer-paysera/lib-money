@@ -20,7 +20,7 @@ class MoneyNormalizerTest extends TestCase
     }
 
     /**
-     * @param array $data
+     * @param array<string, string|int> $data
      * @param string $amount
      * @param string $currency
      *
@@ -35,7 +35,10 @@ class MoneyNormalizerTest extends TestCase
         $this->assertSame($currency, $money->getCurrency());
     }
 
-    public static function mapToEntityProvider()
+    /**
+     * @return array[]
+     */
+    public function mapToEntityProvider()
     {
         return array(
             array(array('amount' => '10.50', 'currency' => 'EUR'), '10.50', 'EUR'),
@@ -46,7 +49,7 @@ class MoneyNormalizerTest extends TestCase
     }
 
     /**
-     * @param array $data
+     * @param array<string, string> $data
      * @param string $message
      *
      * @dataProvider mapToEntityRejectsProvider
@@ -59,7 +62,10 @@ class MoneyNormalizerTest extends TestCase
         (new MoneyNormalizer())->mapToEntity($data);
     }
 
-    public static function mapToEntityRejectsProvider()
+    /**
+     * @return array[]
+     */
+    public function mapToEntityRejectsProvider()
     {
         return array(
             'no amount' => array(array('currency' => 'EUR'), 'Amount is not set'),
@@ -96,7 +102,10 @@ class MoneyNormalizerTest extends TestCase
         (new MoneyNormalizer())->mapFromCents($amountInCents, $currency);
     }
 
-    public static function mapFromCentsRejectsProvider()
+    /**
+     * @return array[]
+     */
+    public function mapFromCentsRejectsProvider()
     {
         return array(
             'not an integer' => array('10.5', 'EUR', 'Invalid amount specified'),
@@ -119,7 +128,10 @@ class MoneyNormalizerTest extends TestCase
         $this->assertSame($currency, $money->getCurrency());
     }
 
-    public static function mapFromMinorUnitsProvider()
+    /**
+     * @return array[]
+     */
+    public function mapFromMinorUnitsProvider()
     {
         return array(
             array(1050, 'EUR', '10.500000'),
@@ -138,7 +150,7 @@ class MoneyNormalizerTest extends TestCase
 
     /**
      * @param Money $money
-     * @param array $expected
+     * @param array<string, string> $expected
      *
      * @dataProvider mapFromEntityProvider
      */
@@ -147,7 +159,10 @@ class MoneyNormalizerTest extends TestCase
         $this->assertSame($expected, (new MoneyNormalizer())->mapFromEntity($money));
     }
 
-    public static function mapFromEntityProvider()
+    /**
+     * @return array[]
+     */
+    public function mapFromEntityProvider()
     {
         return array(
             array(new Money('10.5', 'EUR'), array('amount' => '10.50', 'currency' => 'EUR')),

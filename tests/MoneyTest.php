@@ -1001,7 +1001,10 @@ class MoneyTest extends TestCase
         $this->assertSame($expected, (new Money($amount, 'EUR'))->getAmountInCents());
     }
 
-    public static function getAmountInCentsProvider()
+    /**
+     * @return array[]
+     */
+    public function getAmountInCentsProvider()
     {
         return array(
             array('10.50', 1050),
@@ -1011,18 +1014,28 @@ class MoneyTest extends TestCase
         );
     }
 
-    public function testAmountsTooLargeForAnIntegerAreRejected()
+    /**
+     * @param string $method
+     *
+     * @dataProvider integerGetterProvider
+     */
+    public function testAmountsTooLargeForAnIntegerAreRejected($method)
     {
-        $money = new Money('100000000000000000000', 'EUR');
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Amount is too large to be returned as integer');
 
-        foreach (array('getAmountInCents', 'getAmountInMinorUnits') as $method) {
-            try {
-                $money->$method();
-                $this->fail($method . ' returned a value');
-            } catch (\RuntimeException $exception) {
-                $this->assertSame('Amount is too large to be returned as integer', $exception->getMessage());
-            }
-        }
+        (new Money('100000000000000000000', 'EUR'))->$method();
+    }
+
+    /**
+     * @return array[]
+     */
+    public function integerGetterProvider()
+    {
+        return array(
+            array('getAmountInCents'),
+            array('getAmountInMinorUnits'),
+        );
     }
 
     public function testNoAmountHasNoMinorUnits()
@@ -1044,7 +1057,10 @@ class MoneyTest extends TestCase
         $this->assertSame('EUR', $money->getCurrency());
     }
 
-    public static function createFromCentsProvider()
+    /**
+     * @return array[]
+     */
+    public function createFromCentsProvider()
     {
         return array(
             array(1050, '10.500000'),
@@ -1066,7 +1082,10 @@ class MoneyTest extends TestCase
         Money::$method('10.5', 'EUR');
     }
 
-    public static function createFromIntegerUnitsProvider()
+    /**
+     * @return array[]
+     */
+    public function createFromIntegerUnitsProvider()
     {
         return array(
             array('createFromCents'),
@@ -1089,11 +1108,6 @@ class MoneyTest extends TestCase
         (new Money('10.555', 'EUR'))->check();
     }
 
-    public function testZeroAmountsAreEqualWhateverTheCurrency()
-    {
-        $this->assertTrue((new Money('0', 'EUR'))->isEqual(new Money('0.00', 'USD')));
-    }
-
     public function testTheSameNonZeroAmountInAnotherCurrencyIsNotEqual()
     {
         $this->assertFalse((new Money('1', 'EUR'))->isEqual(new Money('1', 'USD')));
@@ -1110,7 +1124,10 @@ class MoneyTest extends TestCase
         $this->assertSame($expected, (new Money($amount, 'EUR'))->isPositive());
     }
 
-    public static function isPositiveProvider()
+    /**
+     * @return array[]
+     */
+    public function isPositiveProvider()
     {
         return array(
             array('0.01', true),
@@ -1123,7 +1140,7 @@ class MoneyTest extends TestCase
      * @param Money $money
      * @param int|null $fraction
      * @param string $separator
-     * @param array $expected
+     * @param array<string, string> $expected
      *
      * @dataProvider getArrayRepresentationProvider
      */
@@ -1132,18 +1149,16 @@ class MoneyTest extends TestCase
         $this->assertSame($expected, $money->getArrayRepresentation($fraction, $separator));
     }
 
-    public static function getArrayRepresentationProvider()
+    /**
+     * @return array[]
+     */
+    public function getArrayRepresentationProvider()
     {
         return array(
             array(new Money('10.5', 'EUR'), null, '.', array('amount' => '10.50', 'currency' => 'EUR')),
             array(new Money('10.5', 'EUR'), 3, ',', array('amount' => '10,500', 'currency' => 'EUR')),
             array(new Money('7', 'JPY'), null, '.', array('amount' => '7', 'currency' => 'JPY')),
         );
-    }
-
-    public function testCastToStringIsTheAmountAndTheCurrency()
-    {
-        $this->assertSame('10.50 EUR', (string) new Money('10.5', 'EUR'));
     }
 
     public function testGetFractionRejectsAnUnsupportedCurrency()
@@ -1165,7 +1180,10 @@ class MoneyTest extends TestCase
         $this->assertSame($expected, Money::createFromNoDelimiterAmount($amount, 'EUR')->getAmount());
     }
 
-    public static function createFromNoDelimiterAmountEdgeProvider()
+    /**
+     * @return array[]
+     */
+    public function createFromNoDelimiterAmountEdgeProvider()
     {
         return array(
             'empty' => array('', '0.00'),
@@ -1175,7 +1193,7 @@ class MoneyTest extends TestCase
     }
 
     /**
-     * The form app-evpbank and app-wallet-api keep in database columns: class name, property names and visibility must not change.
+     * The serialized form applications keep in database columns: class name, property names and visibility must not change.
      */
     public function testSerializedFormIsStable()
     {

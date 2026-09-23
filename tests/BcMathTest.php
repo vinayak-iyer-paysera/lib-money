@@ -279,12 +279,17 @@ class BcMathTest extends TestCase
         $this->math->div('1', $rightOperand);
     }
 
-    public static function zeroDivisorProvider()
+    /**
+     * @return array[]
+     */
+    public function zeroDivisorProvider()
     {
         return array(
             array('0'),
             array(''),
             array(0),
+            array('0.00'),
+            array('-0'),
         );
     }
 
