@@ -35,4 +35,25 @@ class AggregatedMoneyTest extends TestCase
             array(new Money('1', 'EUR'), new Money('-2', 'EUR'), new Money('-1', 'EUR'))
         );
     }
+
+    public function testAddAllAndGetAll()
+    {
+        $aggregatedMoney = new AggregatedMoney();
+
+        $result = $aggregatedMoney->addAll(array(
+            new Money('1', 'EUR'),
+            new Money('2', 'USD'),
+            new Money('3', 'EUR'),
+        ));
+
+        $this->assertSame($aggregatedMoney, $result);
+        $all = $aggregatedMoney->getAll();
+        $this->assertCount(2, $all);
+        $this->assertSame(array(0, 1), array_keys($all));
+        $this->assertSame('4.000000', $all[0]->getAmount());
+        $this->assertSame('EUR', $all[0]->getCurrency());
+        $this->assertSame('2.000000', $all[1]->getAmount());
+        $this->assertSame('USD', $all[1]->getCurrency());
+        $this->assertNull($aggregatedMoney->get('GBP'));
+    }
 }

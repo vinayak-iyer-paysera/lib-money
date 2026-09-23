@@ -976,4 +976,217 @@ class MoneyTest extends TestCase
             array('11111111111111.111111', '11111111111111.111111'),
         );
     }
+
+    public function testAnEmptyAmountMeansNoAmount()
+    {
+        $this->assertNull((new Money('', 'EUR'))->getAmount());
+    }
+
+    public function testAnAmountWithTwoDecimalSeparatorsIsRejected()
+    {
+        $this->expectException(MoneyException::class);
+        $this->expectExceptionMessage('Invalid amount: 1.2.3');
+
+        new Money('1.2.3', 'EUR');
+    }
+
+    /**
+     * @param string|null $amount
+     * @param int|null $expected
+     *
+     * @dataProvider getAmountInCentsProvider
+     */
+    public function testGetAmountInCents($amount, $expected)
+    {
+        $this->assertSame($expected, (new Money($amount, 'EUR'))->getAmountInCents());
+    }
+
+    public static function getAmountInCentsProvider()
+    {
+        return array(
+            array('10.50', 1050),
+            array('0.019', 1),
+            array('-3', -300),
+            array(null, null),
+        );
+    }
+
+    public function testAmountsTooLargeForAnIntegerAreRejected()
+    {
+        $money = new Money('100000000000000000000', 'EUR');
+
+        foreach (array('getAmountInCents', 'getAmountInMinorUnits') as $method) {
+            try {
+                $money->$method();
+                $this->fail($method . ' returned a value');
+            } catch (\RuntimeException $exception) {
+                $this->assertSame('Amount is too large to be returned as integer', $exception->getMessage());
+            }
+        }
+    }
+
+    public function testNoAmountHasNoMinorUnits()
+    {
+        $this->assertNull((new Money(null, 'EUR'))->getAmountInMinorUnits());
+    }
+
+    /**
+     * @param int|string|null $amountInCents
+     * @param string|null $expected
+     *
+     * @dataProvider createFromCentsProvider
+     */
+    public function testCreateFromCents($amountInCents, $expected)
+    {
+        $money = Money::createFromCents($amountInCents, 'EUR');
+
+        $this->assertSame($expected, $money->getAmount());
+        $this->assertSame('EUR', $money->getCurrency());
+    }
+
+    public static function createFromCentsProvider()
+    {
+        return array(
+            array(1050, '10.500000'),
+            array('-5', '-0.050000'),
+            array(null, null),
+        );
+    }
+
+    /**
+     * @param string $method
+     *
+     * @dataProvider createFromIntegerUnitsProvider
+     */
+    public function testCreateFromCentsOrMinorUnitsRejectsANonInteger($method)
+    {
+        $this->expectException(MoneyException::class);
+        $this->expectExceptionMessage('Amount must be integer');
+
+        Money::$method('10.5', 'EUR');
+    }
+
+    public static function createFromIntegerUnitsProvider()
+    {
+        return array(
+            array('createFromCents'),
+            array('createFromMinorUnits'),
+        );
+    }
+
+    public function testCheckReturnsTheSameMoneyWhenTheCurrencyHasEnoughDecimals()
+    {
+        $money = new Money('10.50', 'EUR');
+
+        $this->assertSame($money, $money->check());
+    }
+
+    public function testCheckRejectsMoreDecimalsThanTheCurrencyHas()
+    {
+        $this->expectException(MoneyException::class);
+        $this->expectExceptionMessage('Too small fraction for the amount specified');
+
+        (new Money('10.555', 'EUR'))->check();
+    }
+
+    public function testZeroAmountsAreEqualWhateverTheCurrency()
+    {
+        $this->assertTrue((new Money('0', 'EUR'))->isEqual(new Money('0.00', 'USD')));
+    }
+
+    public function testTheSameNonZeroAmountInAnotherCurrencyIsNotEqual()
+    {
+        $this->assertFalse((new Money('1', 'EUR'))->isEqual(new Money('1', 'USD')));
+    }
+
+    /**
+     * @param string $amount
+     * @param bool $expected
+     *
+     * @dataProvider isPositiveProvider
+     */
+    public function testIsPositive($amount, $expected)
+    {
+        $this->assertSame($expected, (new Money($amount, 'EUR'))->isPositive());
+    }
+
+    public static function isPositiveProvider()
+    {
+        return array(
+            array('0.01', true),
+            array('0', false),
+            array('-0.01', false),
+        );
+    }
+
+    /**
+     * @param Money $money
+     * @param int|null $fraction
+     * @param string $separator
+     * @param array $expected
+     *
+     * @dataProvider getArrayRepresentationProvider
+     */
+    public function testGetArrayRepresentation(Money $money, $fraction, $separator, array $expected)
+    {
+        $this->assertSame($expected, $money->getArrayRepresentation($fraction, $separator));
+    }
+
+    public static function getArrayRepresentationProvider()
+    {
+        return array(
+            array(new Money('10.5', 'EUR'), null, '.', array('amount' => '10.50', 'currency' => 'EUR')),
+            array(new Money('10.5', 'EUR'), 3, ',', array('amount' => '10,500', 'currency' => 'EUR')),
+            array(new Money('7', 'JPY'), null, '.', array('amount' => '7', 'currency' => 'JPY')),
+        );
+    }
+
+    public function testCastToStringIsTheAmountAndTheCurrency()
+    {
+        $this->assertSame('10.50 EUR', (string) new Money('10.5', 'EUR'));
+    }
+
+    public function testGetFractionRejectsAnUnsupportedCurrency()
+    {
+        $this->expectException(MoneyException::class);
+        $this->expectExceptionMessage('Unsupported currency: ZZZ');
+
+        Money::getFraction('zzz');
+    }
+
+    /**
+     * @param string $amount
+     * @param string $expected
+     *
+     * @dataProvider createFromNoDelimiterAmountEdgeProvider
+     */
+    public function testCreateFromNoDelimiterAmountEdges($amount, $expected)
+    {
+        $this->assertSame($expected, Money::createFromNoDelimiterAmount($amount, 'EUR')->getAmount());
+    }
+
+    public static function createFromNoDelimiterAmountEdgeProvider()
+    {
+        return array(
+            'empty' => array('', '0.00'),
+            'negative' => array('-1234', '-12.34'),
+            'negative below one' => array('-5', '-0.05'),
+        );
+    }
+
+    /**
+     * The form app-evpbank and app-wallet-api keep in database columns: class name, property names and visibility must not change.
+     */
+    public function testSerializedFormIsStable()
+    {
+        $stored = 'O:25:"Evp\Component\Money\Money":2:{s:9:"' . "\0*\0" . 'amount";s:11:"1200.000000";'
+            . 's:11:"' . "\0*\0" . 'currency";s:3:"EUR";}';
+
+        $money = unserialize($stored);
+
+        $this->assertInstanceOf(Money::class, $money);
+        $this->assertSame('1200.000000', $money->getAmount());
+        $this->assertSame('EUR', $money->getCurrency());
+        $this->assertSame($stored, serialize(new Money('1200.000000', 'EUR')));
+    }
 }

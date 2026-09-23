@@ -265,4 +265,32 @@ class BcMathTest extends TestCase
             array('0', 8, '0'),
         );
     }
+
+    /**
+     * @param mixed $rightOperand
+     *
+     * @dataProvider zeroDivisorProvider
+     */
+    public function testDivisionByZeroIsRejected($rightOperand)
+    {
+        $this->expectException(\Exception::class);
+        $this->expectExceptionMessage('Right operand is empty/zero!');
+
+        $this->math->div('1', $rightOperand);
+    }
+
+    public static function zeroDivisorProvider()
+    {
+        return array(
+            array('0'),
+            array(''),
+            array(0),
+        );
+    }
+
+    public function testScale()
+    {
+        $this->assertSame(6, $this->math->getScale());
+        $this->assertSame(2, $this->math->setScale(2)->getScale());
+    }
 }
