@@ -38,6 +38,14 @@ jobs:
         with:
           php-version: ${{ matrix.php-version }}
 
+      # Every PHPUnit release below 8.5.52 and 9.6.0-9.6.32 has a security advisory (CVE-2026-24765), and newer Composer
+      # refuses to install such packages by default. On PHP 7.2 no allowed PHPUnit is left (9.6.33 needs PHP 7.3), and the
+      # lowest-dependency jobs would no longer install the lowest versions. This only affects the test install here.
+      # PHP 7.0 and 7.1 get Composer 2.2, which does not block advisories and does not know this setting.
+      - name: Allow packages with security advisories
+        if: matrix.php-version != '7.0' && matrix.php-version != '7.1'
+        run: composer config policy.advisories.block false
+
       - name: Install dependencies
         uses: ramsey/composer-install@v2
         with:
