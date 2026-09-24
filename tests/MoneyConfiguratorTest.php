@@ -31,8 +31,8 @@ class MoneyConfiguratorTest extends TestCase
 
     /**
      * The definition is private on Symfony 3.4 and later, so a compiled container keeps it only when something refers to it.
-     * Resource tracking is off: it needs symfony/config's resource classes, and the oldest symfony/config the dependencies allow (2.0)
-     * declares no autoloading.
+     * Resource tracking is off: it needs symfony/config's resource classes, and the oldest symfony/config the dependencies allow
+     * (2.0.4) declares no autoloading.
      */
     private function compileAndGet(ContainerBuilder $container)
     {
