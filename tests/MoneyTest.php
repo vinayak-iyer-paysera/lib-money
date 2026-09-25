@@ -977,11 +977,6 @@ class MoneyTest extends TestCase
         );
     }
 
-    public function testAnEmptyAmountMeansNoAmount()
-    {
-        $this->assertNull((new Money('', 'EUR'))->getAmount());
-    }
-
     public function testAnAmountWithTwoDecimalSeparatorsIsRejected()
     {
         $this->expectException(MoneyException::class);
@@ -991,26 +986,29 @@ class MoneyTest extends TestCase
     }
 
     /**
+     * @param string $method
      * @param string|null $amount
-     * @param int|null $expected
+     * @param string|int|null $expected
      *
-     * @dataProvider getAmountInCentsProvider
+     * @dataProvider amountGettersProvider
      */
-    public function testGetAmountInCents($amount, $expected)
+    public function testAmountGetters($method, $amount, $expected)
     {
-        $this->assertSame($expected, (new Money($amount, 'EUR'))->getAmountInCents());
+        $this->assertSame($expected, (new Money($amount, 'EUR'))->$method());
     }
 
     /**
      * @return array[]
      */
-    public function getAmountInCentsProvider()
+    public function amountGettersProvider()
     {
         return array(
-            array('10.50', 1050),
-            array('0.019', 1),
-            array('-3', -300),
-            array(null, null),
+            'an empty amount means no amount' => array('getAmount', '', null),
+            'amount in cents' => array('getAmountInCents', '10.50', 1050),
+            'a fraction of a cent is dropped' => array('getAmountInCents', '0.019', 1),
+            'negative amount in cents' => array('getAmountInCents', '-3', -300),
+            'no amount has no cents' => array('getAmountInCents', null, null),
+            'no amount has no minor units' => array('getAmountInMinorUnits', null, null),
         );
     }
 
@@ -1038,34 +1036,48 @@ class MoneyTest extends TestCase
         );
     }
 
-    public function testNoAmountHasNoMinorUnits()
-    {
-        $this->assertNull((new Money(null, 'EUR'))->getAmountInMinorUnits());
-    }
-
     /**
-     * @param int|string|null $amountInCents
-     * @param string|null $expected
+     * @param string $method
+     * @param int|string|null $amount
+     * @param array<string, string|null> $expected
      *
-     * @dataProvider createFromCentsProvider
+     * @dataProvider createFromCentsAndNoDelimiterAmountProvider
      */
-    public function testCreateFromCents($amountInCents, $expected)
+    public function testCreateFromCentsAndNoDelimiterAmount($method, $amount, array $expected)
     {
-        $money = Money::createFromCents($amountInCents, 'EUR');
+        $money = Money::$method($amount, 'EUR');
 
-        $this->assertSame($expected, $money->getAmount());
-        $this->assertSame('EUR', $money->getCurrency());
+        $this->assertSame($expected, array('amount' => $money->getAmount(), 'currency' => $money->getCurrency()));
     }
 
     /**
      * @return array[]
      */
-    public function createFromCentsProvider()
+    public function createFromCentsAndNoDelimiterAmountProvider()
     {
         return array(
-            array(1050, '10.500000'),
-            array('-5', '-0.050000'),
-            array(null, null),
+            'cents' => array('createFromCents', 1050, array('amount' => '10.500000', 'currency' => 'EUR')),
+            'negative cents as a string' => array(
+                'createFromCents',
+                '-5',
+                array('amount' => '-0.050000', 'currency' => 'EUR'),
+            ),
+            'no cents' => array('createFromCents', null, array('amount' => null, 'currency' => 'EUR')),
+            'empty amount without delimiter' => array(
+                'createFromNoDelimiterAmount',
+                '',
+                array('amount' => '0.00', 'currency' => 'EUR'),
+            ),
+            'negative amount without delimiter' => array(
+                'createFromNoDelimiterAmount',
+                '-1234',
+                array('amount' => '-12.34', 'currency' => 'EUR'),
+            ),
+            'negative amount below one without delimiter' => array(
+                'createFromNoDelimiterAmount',
+                '-5',
+                array('amount' => '-0.05', 'currency' => 'EUR'),
+            ),
         );
     }
 
@@ -1137,16 +1149,17 @@ class MoneyTest extends TestCase
     }
 
     /**
-     * @param Money $money
+     * @param string $amount
+     * @param string $currency
      * @param int|null $fraction
      * @param string $separator
      * @param array<string, string> $expected
      *
      * @dataProvider getArrayRepresentationProvider
      */
-    public function testGetArrayRepresentation(Money $money, $fraction, $separator, array $expected)
+    public function testGetArrayRepresentation($amount, $currency, $fraction, $separator, array $expected)
     {
-        $this->assertSame($expected, $money->getArrayRepresentation($fraction, $separator));
+        $this->assertSame($expected, (new Money($amount, $currency))->getArrayRepresentation($fraction, $separator));
     }
 
     /**
@@ -1155,9 +1168,21 @@ class MoneyTest extends TestCase
     public function getArrayRepresentationProvider()
     {
         return array(
-            array(new Money('10.5', 'EUR'), null, '.', array('amount' => '10.50', 'currency' => 'EUR')),
-            array(new Money('10.5', 'EUR'), 3, ',', array('amount' => '10,500', 'currency' => 'EUR')),
-            array(new Money('7', 'JPY'), null, '.', array('amount' => '7', 'currency' => 'JPY')),
+            'decimals of the currency' => array(
+                '10.5',
+                'EUR',
+                null,
+                '.',
+                array('amount' => '10.50', 'currency' => 'EUR'),
+            ),
+            'given fraction and separator' => array(
+                '10.5',
+                'EUR',
+                3,
+                ',',
+                array('amount' => '10,500', 'currency' => 'EUR'),
+            ),
+            'currency without decimals' => array('7', 'JPY', null, '.', array('amount' => '7', 'currency' => 'JPY')),
         );
     }
 
@@ -1169,32 +1194,6 @@ class MoneyTest extends TestCase
         Money::getFraction('zzz');
     }
 
-    /**
-     * @param string $amount
-     * @param string $expected
-     *
-     * @dataProvider createFromNoDelimiterAmountEdgeProvider
-     */
-    public function testCreateFromNoDelimiterAmountEdges($amount, $expected)
-    {
-        $this->assertSame($expected, Money::createFromNoDelimiterAmount($amount, 'EUR')->getAmount());
-    }
-
-    /**
-     * @return array[]
-     */
-    public function createFromNoDelimiterAmountEdgeProvider()
-    {
-        return array(
-            'empty' => array('', '0.00'),
-            'negative' => array('-1234', '-12.34'),
-            'negative below one' => array('-5', '-0.05'),
-        );
-    }
-
-    /**
-     * The serialized form applications keep in database columns: class name, property names and visibility must not change.
-     */
     public function testSerializedFormIsStable()
     {
         $stored = 'O:25:"Evp\Component\Money\Money":2:{s:9:"' . "\0*\0" . 'amount";s:11:"1200.000000";'
@@ -1203,8 +1202,10 @@ class MoneyTest extends TestCase
         $money = unserialize($stored);
 
         $this->assertInstanceOf(Money::class, $money);
-        $this->assertSame('1200.000000', $money->getAmount());
-        $this->assertSame('EUR', $money->getCurrency());
+        $this->assertSame(
+            array('amount' => '1200.000000', 'currency' => 'EUR'),
+            array('amount' => $money->getAmount(), 'currency' => $money->getCurrency())
+        );
         $this->assertSame($stored, serialize(new Money('1200.000000', 'EUR')));
     }
 }

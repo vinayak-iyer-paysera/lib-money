@@ -47,13 +47,18 @@ class AggregatedMoneyTest extends TestCase
         ));
 
         $this->assertSame($aggregatedMoney, $result);
-        $all = $aggregatedMoney->getAll();
-        $this->assertCount(2, $all);
-        $this->assertSame(array(0, 1), array_keys($all));
-        $this->assertSame('4.000000', $all[0]->getAmount());
-        $this->assertSame('EUR', $all[0]->getCurrency());
-        $this->assertSame('2.000000', $all[1]->getAmount());
-        $this->assertSame('USD', $all[1]->getCurrency());
+        $this->assertSame(
+            array(
+                array('amount' => '4.000000', 'currency' => 'EUR'),
+                array('amount' => '2.000000', 'currency' => 'USD'),
+            ),
+            array_map(
+                function (Money $money) {
+                    return array('amount' => $money->getAmount(), 'currency' => $money->getCurrency());
+                },
+                $aggregatedMoney->getAll()
+            )
+        );
         $this->assertNull($aggregatedMoney->get('GBP'));
     }
 }

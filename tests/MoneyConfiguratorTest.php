@@ -8,6 +8,7 @@ use Paysera\Component\DependencyInjection\ConfiguratorInterface;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\DependencyInjection\Alias;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\DependencyInjection\Definition;
 
 class MoneyConfiguratorTest extends TestCase
 {
@@ -22,18 +23,13 @@ class MoneyConfiguratorTest extends TestCase
 
         (new MoneyConfigurator())->load($container);
 
-        $this->assertSame(
-            MoneyNormalizer::class,
-            $container->getDefinition('evp_money.normalizer.money')->getClass()
+        $this->assertEquals(
+            new Definition(MoneyNormalizer::class),
+            $container->getDefinition('evp_money.normalizer.money')
         );
         $this->assertInstanceOf(MoneyNormalizer::class, $this->compileAndGet($container));
     }
 
-    /**
-     * The definition is private on Symfony 3.4 and later, so a compiled container keeps it only when something refers to it.
-     * Resource tracking is off: it needs symfony/config's resource classes, and the oldest symfony/config the dependencies allow
-     * (2.0.4) declares no autoloading.
-     */
     private function compileAndGet(ContainerBuilder $container)
     {
         $container->setAlias('test.evp_money.normalizer.money', new Alias('evp_money.normalizer.money', true));
